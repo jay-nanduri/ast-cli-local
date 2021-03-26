@@ -2,7 +2,7 @@ version: 2.1 # use CircleCI 2.1
 executors:
   go-container:
     docker:
-      - image: circleci/golang:1.13.7
+      - image: circleci/golang:1.15.0
   go-lint:
     docker:
       - image: golangci/golangci-lint:v1.28.1-alpine
@@ -16,177 +16,35 @@ orbs:
   checkmarx: checkmarx/circleci-kpi-shipper@0.11.0
   
 jobs:
-  unit-tests:
-    executor: 
-      circle-machine
-    working_directory: ~/repo
+  docker-build:
+    executor: docker
     steps:
-      - checkout
-      - run: 
-          name: Config GOPRIVATE environment variable
-          command: echo "export GOPRIVATE=github.com/checkmarxDev/*" >> $BASH_ENV
-      - run:
-          name: Config Git credentials
-          command: git config --global url."https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com".insteadOf "https://github.com"
-      - restore_cache:
-          keys:
-            - go-mod-v2-{{ checksum "go.sum" }}
-      - run: 
-          name: go test with coverage
+      - setup_remote_docker
+      - attach_workspace:
+          at: .
+      - deploy:
+          name: Docker Build
           command: |
-            sudo chmod +x ./internal/commands/.scripts/up.sh \
-            ./internal/commands/.scripts/down.sh
-            sudo -E env "PATH=$PATH" go test ./... -coverprofile cover.out
-          no_output_timeout: 2m
-      - run:
-          name: Check if total coverage is greater then 0
-          command: |
-          
-            CODE_COV=$(go tool cover -func cover.out | grep total | awk '{print substr($3, 1, length($3)-1)}')
-            EXPECTED_CODE_COV=0
-            var=$(awk 'BEGIN{ print "'$CODE_COV'"<"'$EXPECTED_CODE_COV'" }')   
-            if [ "$var" -eq 1 ];then
-              echo "Your code coverage is too low. Coverage precentage is: $CODE_COV"
-   
-              exit 1
-            else
-              echo "Your code coverage test passed! Coverage precentage is: $CODE_COV"
-              
-              exit 0
-            fi
-      - save_cache: # Store cache in the /go/pkg directory
-          key: go-mod-v2-{{ checksum "go.sum" }}
-          paths:
-            - "/go/pkg/mod"
-
-  integration-tests: 
-    executor: 
-      circle-machine
-    working_directory: ~/repo
-    steps:
-      - checkout
-      - run: 
-          name: Config GOPRIVATE environment variable
-          command: echo "export GOPRIVATE=github.com/checkmarxDev/*" >> $BASH_ENV
-      - run:
-          name: Config Git credentials
-          command: git config --global url."https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com".insteadOf "https://github.com"
-      - restore_cache:
-          keys:
-            - go-mod-v2-{{ checksum "go.sum" }}
-      - run: 
-          name: go integration test          
-          command: |
-            sudo chmod +x ./internal/commands/.scripts/integration_up.sh            
-            sudo -E env "PATH=$PATH" ./internal/commands/.scripts/integration_up.sh            
-          no_output_timeout: 2m
-      - save_cache: # Store cache in the /go/pkg directory
-          key: go-mod-v2-{{ checksum "go.sum" }}
-          paths:
-            - "/go/pkg/mod"
-
-  lint:
-    executor:
-      go-lint
-    working_directory: ~/repo
-    steps:
-      - checkout
-      - run:
-          name: Config GOPRIVATE environment variable
-          command: echo "export GOPRIVATE=github.com/checkmarxDev/*" >> $BASH_ENV
-      - run:
-          name: Config Git credentials
-          command: git config --global url."https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com".insteadOf "https://github.com"
-      - restore_cache:
-          keys:
-            - go-mod-v1-{{ checksum "go.sum" }}
-      - run:
-          name: Run golangci-lint
-          command: golangci-lint run ./...
-          no_output_timeout: 2m
-      - save_cache: # Store cache in the /go/pkg directory
-          key: go-mod-v1-{{ checksum "go.sum" }}
-          paths:
-            - "/go/pkg/mod"
-            
-  publish-github-release:
-    executor:
-      go-container
-    working_directory: ~/repo
-    steps:
-      - checkout
-      - run:
-          name: Install AWS CLI
-          working_directory: ~/aws
-          command: |
-            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-            unzip awscliv2.zip
-            sudo ./aws/install
-      - run:
-          name: Configure AWS credentials
-          command: |
-            aws configure set aws_access_key_id ${ACCESS_KEY_ID} --profile default
-            aws configure set aws_secret_access_key ${AWS_SECRET_ACCESS_KEY} --profile default
-            aws configure set region ${AWS_REGION} --profile default
-      - run:
-          name: Config GOPRIVATE environment variable
-          command: echo "export GOPRIVATE=github.com/checkmarxDev/*" >> $BASH_ENV
-      - run:
-          name: Config Git credentials
-          command: git config --global url."https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com".insteadOf "https://github.com"
-      - restore_cache:
-          keys:
-            - go-mod-v1-{{ checksum "go.sum" }}
-      - run: go mod download
-      - run: 
-          name: Build CX CIRCLE_PROJECT_REPONAME Linux_amd64 binary 
-          command: GOOS=linux GOARCH=amd64 go build -o bin/cx cmd/main.go
-      - run:
-          name: Build CX CLI Windows binary
-          command: GOOS=windows GOARCH=amd64 go build -o bin/cx.exe cmd/main.go
-      - run:
-          name: Build sca-agent Linux binary
-          command: GOOS=linux GOARCH=amd64 go build -o bin/cx cmd/main.go
-      - run:
-          name: Build MacOS binary
-          command: GOOS=darwin GOARCH=amd64 go build -o bin/cx-mac cmd/main.go
-      - run: go get github.com/tcnksm/ghr
-      - run:
-          name: Publish GitHub release
-          command: |
-            VERSION=$(./bin/cx version)
-            VERSION="2.0.0_RC2"
-            ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${VERSION} ./bin/
-      - save_cache: # Store cache in the /go/pkg directory
-          key: go-mod-v1-{{ checksum "go.sum" }}
-          paths:
-            - "/go/pkg/mod"
-            
+            VERSION=2.0.0_RC2-TEST
+            SHA1_SHORT=${CIRCLE_SHA1::7}
+            docker login -u ${DOCKER_USER} -p ${DOCKER_PASSWORD} docker.io
+            docker build --target java8 \
+              -t ${DOCKER_REPO}:${SHA1_SHORT} \
+              -t ${DOCKER_REPO}:${VERSION}-8 \
+              -t ${DOCKER_REPO}:${VERSION} \
+              -t ${DOCKER_REPO} \
+              .
+            docker build --target java11 \
+              -t ${DOCKER_REPO}:${VERSION}-11 \
+              .
+            docker push ${DOCKER_REPO}:${SHA1_SHORT}
 workflows:
   Visibility-workflow:
     jobs:
       - checkmarx/circleci-kpi-shipper
   Test-workflow:
     jobs:
-      - unit-tests:
+      - docker-build:
           filters:
-            branches:
+            branches: master
               ignore:
-      - integration-tests:
-          filters:
-            branches:
-              ignore:
-      - lint:
-          filters:
-            branches:
-              ignore:
-          context: AWS
-
-  release-publish-workflow:
-    jobs:
-      - publish-github-release:
-          filters:
-            branches:
-              only:
-                - master
-          context: AWS
