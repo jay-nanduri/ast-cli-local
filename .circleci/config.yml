@@ -42,7 +42,7 @@ workflows:
   Visibility-workflow:
     jobs:
       - checkmarx/circleci-kpi-shipper
-  Test-workflow:
+  workflow:
     jobs:
       - docker-build:
           filters:
