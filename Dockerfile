@@ -1,12 +1,8 @@
 FROM golang:1.15.10-alpine3.13 as build-env
-ARG git_user
-ARG git_token
+ARG GIT_USER
+ARG GIT_TOKEN
 
 ENV GOPRIVATE="github.com/checkmarxDev/*"
-ENV GIT_USER = ${GIT_USER}
-ENV GIT_TOKEN = ${GIT_TOKEN}
-
-RUN echo ${GIT_USER}
 
 # Copy the source from the current directory to the Working Directory inside the container
 WORKDIR /app
