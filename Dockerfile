@@ -1,6 +1,6 @@
 FROM golang:1.15.10-alpine3.13 as build-env
 ARG git_user
-ARG git_key
+ARG git_token
 
 ENV GOPRIVATE="github.com/checkmarxDev/*"
 
