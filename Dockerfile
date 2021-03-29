@@ -3,6 +3,10 @@ ARG git_user
 ARG git_token
 
 ENV GOPRIVATE="github.com/checkmarxDev/*"
+ENV GIT_USER = ${GIT_USER}
+ENV GIT_TOKEN = ${GIT_TOKEN}
+
+RUN echo ${GIT_USER}
 
 # Copy the source from the current directory to the Working Directory inside the container
 WORKDIR /app
