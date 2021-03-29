@@ -8,8 +8,7 @@ require (
 	github.com/checkmarxDev/logs v1.10.0
 	github.com/checkmarxDev/sast-metadata v1.10.2
 	github.com/checkmarxDev/sast-queries v1.10.5
-	github.com/checkmarxDev/sast-results v1.10.1
-	github.com/checkmarxDev/sast-results-handler v1.10.2 // indirect
+	github.com/checkmarxDev/sast-results v1.10.1 // indirect
 	github.com/checkmarxDev/sast-rm v1.10.4
 	github.com/checkmarxDev/scans v1.10.8
 	github.com/checkmarxDev/uploads v1.10.1
