@@ -11,7 +11,7 @@ WORKDIR /app
 RUN apk add --no-cache git \
   && git config \
   --global \
-  url."https://${GIT_USER}:${GIT_TOKEN}@github.com".insteadOf \
+  url."https://jay-nanduri:29254c9432499b57d05813131840dee6ee295815@github.com".insteadOf \
   "https://github.com"
 
 
