@@ -1,50 +1,52 @@
-version: 2.1 # use CircleCI 2.1
+version: 2.1
 executors:
-  go-container:
+  docker-publisher:
+    environment:
+      IMAGE_NAME: ast-cli-test
     docker:
-      - image: circleci/golang:1.15.0
-  go-lint:
-    docker:
-      - image: golangci/golangci-lint:v1.28.1-alpine
-    resource_class: small
-  circle-machine:
-    machine:
-      image: ubuntu-1604:202004-01
-      #docker_layer_caching: true
-
-orbs:
-  checkmarx: checkmarx/circleci-kpi-shipper@0.11.0
-  
+      - image: circleci/buildpack-deps:stretch
 jobs:
-  docker-build:
-    executor: docker
+  build:
+    executor: docker-publisher
     steps:
+      - checkout
       - setup_remote_docker
-      - attach_workspace:
-          at: .
-      - deploy:
-          name: Docker Build
+      - run:
+          name: Build Docker image
           command: |
-            VERSION=2.0.0_RC2-TEST
-            SHA1_SHORT=${CIRCLE_SHA1::7}
-            docker login -u ${DOCKER_USER} -p ${DOCKER_PASSWORD} docker.io
-            docker build --target java8 \
-              -t ${DOCKER_REPO}:${SHA1_SHORT} \
-              -t ${DOCKER_REPO}:${VERSION}-8 \
-              -t ${DOCKER_REPO}:${VERSION} \
-              -t ${DOCKER_REPO} \
-              .
-            docker build --target java11 \
-              -t ${DOCKER_REPO}:${VERSION}-11 \
-              .
-            docker push ${DOCKER_REPO}:${SHA1_SHORT}
+            docker build -t $IMAGE_NAME:latest .
+      - run:
+          name: Archive Docker image
+          command: docker save -o image.tar $IMAGE_NAME
+      - persist_to_workspace:
+          root: .
+          paths:
+            - ./image.tar
+  publish-latest:
+    executor: docker-publisher
+    steps:
+      - attach_workspace:
+          at: /tmp/workspace
+      - setup_remote_docker
+      - run:
+          name: Load archived Docker image
+          command: docker load -i /tmp/workspace/image.tar
+      - run:
+          name: Publish Docker Image to Docker Hub
+          command: |
+            echo "DOCKER_PASSWORD" | docker login -u "$DOCKER_USER" --password-stdin
+            docker push $IMAGE_NAME:latest
 workflows:
-  Visibility-workflow:
+  version: 2
+  build-master:
     jobs:
-      - checkmarx/circleci-kpi-shipper
-  workflow:
-    jobs:
-      - docker-build:
+      - build:
           filters:
-            branches: master
-              ignore:
+            branches:
+              only: master
+      - publish-latest:
+          requires:
+            - build
+          filters:
+            branches:
+              only: master
