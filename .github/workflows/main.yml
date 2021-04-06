@@ -21,6 +21,7 @@ jobs:
           project_type: sast
           additional_params: --incremental false --preset-name "Checkmarx Default" --agent "GitHub Action"
           filter: "!*.md"
+
       - uses: actions/upload-artifact@v2
         with:
           name: zip-file-download
