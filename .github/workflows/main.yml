@@ -15,7 +15,7 @@ jobs:
         uses: checkmarxDev/ast-github-action@master #Github Action version
         with:
           project_name: astcli5
-          base_uri: http://master.astcloud.net
+          base_uri: http://demo.ast-cloud.com
           client_id: ${{ secrets.CLIENT_ID }}
           secret: ${{ secrets.SECRET }}
           project_type: sast
