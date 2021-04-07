@@ -19,6 +19,7 @@ jobs:
           client_id: ${{ secrets.CLIENT_ID }}
           secret: ${{ secrets.SECRET }}
           project_type: sast
+          archive_source: ./cxcli089362492.zip
           additional_params: --incremental false --preset-name "Checkmarx Default" --agent "GitHub Action"
           filter: "!*.zip"
 
