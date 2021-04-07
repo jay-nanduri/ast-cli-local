@@ -14,7 +14,7 @@ jobs:
       - name: Checkmarx AST CLI Action
         uses: checkmarxDev/ast-github-action@master #Github Action version
         with:
-          project_name: astcli3
+          project_name: astcli4
           base_uri: http://master.astcloud.net
           client_id: ${{ secrets.CLIENT_ID }}
           secret: ${{ secrets.SECRET }}
@@ -22,7 +22,7 @@ jobs:
           additional_params: --incremental false --preset-name "Checkmarx Default" --agent "GitHub Action"
           filter: "!*.md"
 
-      - uses: actions/upload-artifact@v2
-        with:
-          name: zip-file-download
-          path: ./cx.zip
+#      - uses: actions/upload-artifact@v2
+#        with:
+#          name: zip-file-download
+#          path: ./cx.zip
